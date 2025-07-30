@@ -70,7 +70,7 @@ func TestSendMagicPacket(t *testing.T) {
 	// Test with valid MAC address format (this won't actually send a packet)
 	// We're just testing the packet construction logic
 	validMAC := "aa:bb:cc:dd:ee:ff"
-	
+
 	// This test would need network mocking to test actual sending
 	// For now, we'll test the MAC address parsing by calling with a broadcast
 	// address that should fail gracefully
