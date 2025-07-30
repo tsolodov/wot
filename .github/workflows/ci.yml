@@ -123,8 +123,8 @@ jobs:
   build:
     name: Build and Package
     runs-on: ubuntu-latest
-    needs: [test, create-release]
-    if: always() && needs.test.result == 'success' && (github.event_name == 'release' || needs.create-release.outputs.release_created == 'true')
+    needs: test
+    if: github.event_name == 'release' || (github.event.inputs.create_release == 'true' && github.ref == 'refs/heads/main')
     strategy:
       matrix:
         include:
@@ -259,8 +259,8 @@ jobs:
   upload-assets:
     name: Upload Release Assets
     runs-on: ubuntu-latest
-    needs: [build, create-release]
-    if: always() && needs.build.result == 'success' && (github.event_name == 'release' || needs.create-release.outputs.release_created == 'true')
+    needs: build
+    if: github.event_name == 'release' || (github.event.inputs.create_release == 'true' && github.ref == 'refs/heads/main')
     permissions:
       contents: write
       actions: read
@@ -268,10 +268,19 @@ jobs:
     - name: Download all artifacts
       uses: actions/download-artifact@v4
     
+    - name: Determine tag name
+      id: tag
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag_name=v${{ env.MAJOR_VERSION }}.${{ env.MINOR_VERSION }}.${{ github.run_number }}" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Upload release assets
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ needs.create-release.outputs.tag_name || github.ref_name }}
+        tag_name: ${{ steps.tag.outputs.tag_name }}
         files: |
           wot-*/wot-*.tar.gz
           wot-*/wot-*.tar.gz.sha256
