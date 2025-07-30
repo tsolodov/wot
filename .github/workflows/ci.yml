@@ -119,6 +119,7 @@ jobs:
       run: |
         cp wot-${{ matrix.platform }} package/usr/bin/wot
         cp config.json package/etc/wot/config.json.example
+        cp environment.example package/etc/wot/environment.example
         cp wot-bot.service package/etc/systemd/system/
         chmod +x package/usr/bin/wot
     
@@ -145,6 +146,10 @@ jobs:
         else
             echo "Existing config found at /etc/wot/config.json"
         fi
+        
+        # Copy environment example file
+        sudo cp etc/wot/environment.example /etc/wot/
+        echo "Environment variable example copied to /etc/wot/environment.example"
         
         # Install systemd service
         sudo cp etc/systemd/system/wot-bot.service /etc/systemd/system/

@@ -1,30 +1,71 @@
 [Unit]
 Description=Wake-on-LAN Telegram Bot
-After=network.target
+Documentation=https://github.com/tsolodov/wot
+After=network-online.target
+Wants=network-online.target
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-# Remove User/Group to run as current user or use DynamicUser
 DynamicUser=yes
 StateDirectory=wot
 ConfigurationDirectory=wot
 WorkingDirectory=%S/wot
 ExecStart=/usr/bin/wot -config /etc/wot/config.json
+
+# Environment variables (optional - can be overridden with drop-in files)
+# Create /etc/systemd/system/wot-bot.service.d/environment.conf to override
+# Environment=WOT_BOT_TOKEN=your_token_here
+# Environment=WOT_ADMIN_CHAT_ID=your_chat_id_here
+# Or use: EnvironmentFile=/etc/wot/environment
+
+# Restart configuration
 Restart=on-failure
 RestartSec=5
 StartLimitBurst=100
 StartLimitIntervalSec=300
 
-# Security settings
+# Security hardening
 NoNewPrivileges=yes
-PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
 ProtectKernelTunables=yes
+ProtectKernelModules=yes
 ProtectControlGroups=yes
+ProtectKernelLogs=yes
+ProtectHostname=yes
+ProtectClock=yes
 RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
 MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateUsers=yes
+PrivateMounts=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@debug @mount @cpu-emulation @obsolete @privileged @reboot @swap @raw-io
+
+# Resource limits
+TasksMax=10
+MemoryMax=128M
+CPUQuota=50%
+
+# Network access (required for Telegram API and Wake-on-LAN)
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+IPAddressAllow=link-local
+IPAddressAllow=multicast
+IPAddressAllow=192.168.0.0/16
+IPAddressAllow=10.0.0.0/8
+IPAddressAllow=172.16.0.0/12
+# Allow Telegram API access
+IPAddressAllow=149.154.160.0/20
+IPAddressAllow=91.108.4.0/22
 
 # Logging
 StandardOutput=journal

@@ -1,0 +1,13 @@
+# WoT Bot Environment Variables
+# Copy this file to /etc/wot/environment and update with your real values
+# Then set up systemd to use it with: EnvironmentFile=/etc/wot/environment
+
+# Telegram Bot Token from @BotFather
+WOT_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+
+# Your Telegram Chat ID from @userinfobot
+WOT_ADMIN_CHAT_ID=123456789
+
+# Security Note:
+# Make sure to secure this file with: chmod 600 /etc/wot/environment
+# And set proper ownership with: chown root:root /etc/wot/environment

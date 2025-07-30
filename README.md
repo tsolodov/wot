@@ -47,11 +47,10 @@ A Telegram bot for managing Wake-on-LAN magic packets and server monitoring. Con
 
 See the WoT bot in action:
 
-### Bot Commands Overview
-![Available Commands](docs/images/telegram-bot/telegram-bot-help-command.jpg)
-
-### Server Status Monitoring
-![Server Status List](docs/images/telegram-bot/telegram-bot-server-list.jpg)
+| Feature | Screenshot |
+|---------|------------|
+| Available Commands | ![Bot Commands](docs/images/telegram-bot/telegram-bot-help-command.jpg) |
+| Server Status List | ![Server Status](docs/images/telegram-bot/telegram-bot-server-list.jpg) |
 
 ## ⚠️ Disclaimer
 
@@ -183,6 +182,22 @@ Create a `config.json` file with your server configurations:
 
 > **Note**: Telegram configuration is required as the application only runs as a Telegram bot.
 
+### Environment Variable Override
+
+For security and deployment flexibility, you can override Telegram credentials using environment variables:
+
+- `WOT_BOT_TOKEN` - Overrides `telegram.bot_token` from config file
+- `WOT_ADMIN_CHAT_ID` - Overrides `telegram.admin_chat_id` from config file
+
+**Example:**
+```bash
+export WOT_BOT_TOKEN="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+export WOT_ADMIN_CHAT_ID="123456789"
+./wot  # Uses environment variables instead of config.json values
+```
+
+Environment variables take precedence over config file values, making them ideal for Docker containers, systemd services, and CI/CD deployments.
+
 ## Usage
 
 The WoT bot runs as a Telegram bot service. Start it with:
@@ -206,9 +221,7 @@ All server management is done through Telegram bot commands once the service is 
 The following commands are available in your Telegram chat with the bot:
 
 ### Help Command
-Use `/help` to see all available commands:
-
-![Bot Help Command](docs/images/telegram-bot/telegram-bot-help-command.jpg)
+Use `/help` to see all available commands (see screenshot in [Screenshots](#screenshots) section above).
 
 ### Available Commands
 - `/help` - Show bot commands
@@ -223,9 +236,7 @@ Use `/help` to see all available commands:
   - `/checkwake servername` - Check and wake specific server
 
 ### Server List Example
-The `/list` command shows all configured servers with their current status:
-
-![Server List Command](docs/images/telegram-bot/telegram-bot-server-list.jpg)
+The `/list` command shows all configured servers with their current status (see screenshot in [Screenshots](#screenshots) section above).
 
 ## Setting up Telegram Bot
 
@@ -307,9 +318,7 @@ You need your Telegram chat ID so the bot knows where to send messages.
 
 4. **Verify** you receive a response with the available commands
 
-If successful, you should see the help response like this:
-
-![Successful Bot Setup](docs/images/telegram-bot/telegram-bot-help-command.jpg)
+If successful, you should see the help response with available commands (refer to the screenshot in the [Screenshots](#screenshots) section).
 
 ### Security Best Practices
 
@@ -318,6 +327,7 @@ If successful, you should see the help response like this:
   ```bash
   export WOT_BOT_TOKEN="your_token_here"
   export WOT_ADMIN_CHAT_ID="your_chat_id_here"
+  ./wot  # Environment variables override config.json values
   ```
 - **Regenerate the token** if it's ever compromised (use `/token` with @BotFather)
 - **Only give the bot token** to trusted systems
@@ -352,11 +362,7 @@ If successful, you should see the help response like this:
 
 ## Server Monitoring
 
-The bot automatically monitors server status and sends notifications:
-
-![Server Status Example](docs/images/telegram-bot/telegram-bot-server-list.jpg)
-
-*Example server list showing status indicators: ✅ UP, ❌ DOWN, ❓ NO IP*
+The bot automatically monitors server status and sends notifications. The server list shows status indicators: ✅ UP, ❌ DOWN, ❓ NO IP (see server status screenshot in the [Screenshots](#screenshots) section).
 
 ### Features
 - **Automatic monitoring**: Checks server status at regular intervals (configurable via `monitoring_interval`)
@@ -458,9 +464,39 @@ sudo journalctl -u wot-bot -f
 - **Auto-restart**: Restarts on failure with 5-second delay
 - **Restart limits**: Maximum 100 restarts per 5-minute window
 - **Dynamic user**: Creates isolated user automatically
-- **Security hardening**: Enhanced security with multiple protections
+- **Enhanced security**: Comprehensive systemd hardening with network restrictions
+- **Resource limits**: Memory (128MB) and CPU (50%) limits
+- **Network security**: Restricted to required IP ranges and Telegram API access
 - **Standard paths**: Uses systemd standard directories
+- **Environment support**: Built-in support for environment variables
 - **Logging**: All output goes to systemd journal
+
+### Using Environment Variables with SystemD
+
+For secure credential management, you can override the systemd service to use environment variables:
+
+```bash
+# Create environment file
+sudo tee /etc/wot/environment << EOF
+WOT_BOT_TOKEN=your_real_bot_token_here
+WOT_ADMIN_CHAT_ID=your_real_chat_id_here
+EOF
+
+# Secure the environment file
+sudo chmod 600 /etc/wot/environment
+sudo chown root:root /etc/wot/environment
+
+# Create systemd override
+sudo mkdir -p /etc/systemd/system/wot-bot.service.d
+sudo tee /etc/systemd/system/wot-bot.service.d/environment.conf << EOF
+[Service]
+EnvironmentFile=/etc/wot/environment
+EOF
+
+# Reload and restart
+sudo systemctl daemon-reload
+sudo systemctl restart wot-bot
+```
 
 ### Troubleshooting
 - Config location: `/etc/wot/config.json`

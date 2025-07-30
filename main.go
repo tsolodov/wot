@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,6 +62,21 @@ func loadConfig(filename string) (*Config, error) {
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Override with environment variables if present
+	if botToken := os.Getenv("WOT_BOT_TOKEN"); botToken != "" {
+		config.Telegram.BotToken = botToken
+		log.Println("Using bot token from WOT_BOT_TOKEN environment variable")
+	}
+
+	if adminChatID := os.Getenv("WOT_ADMIN_CHAT_ID"); adminChatID != "" {
+		if chatID, err := strconv.ParseInt(adminChatID, 10, 64); err == nil {
+			config.Telegram.AdminChatID = chatID
+			log.Println("Using admin chat ID from WOT_ADMIN_CHAT_ID environment variable")
+		} else {
+			log.Printf("Warning: Invalid WOT_ADMIN_CHAT_ID format: %s (must be a number)", adminChatID)
+		}
 	}
 
 	return &config, nil

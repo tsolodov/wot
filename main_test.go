@@ -80,3 +80,59 @@ func TestSendMagicPacket(t *testing.T) {
 		t.Log("MAC address parsing appears to work correctly")
 	}
 }
+
+func TestEnvironmentVariables(t *testing.T) {
+	// Create a temporary config file
+	testConfig := Config{
+		Servers: []Server{
+			{
+				Name:       "test-server",
+				MACAddress: "aa:bb:cc:dd:ee:ff",
+				IPAddress:  "192.168.1.100",
+			},
+		},
+		Telegram: TelegramConfig{
+			BotToken:    "config-token",
+			AdminChatID: 12345,
+		},
+	}
+
+	tmpFile, err := os.CreateTemp("", "test-env-config-*.json")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	configData, err := json.Marshal(testConfig)
+	if err != nil {
+		t.Fatalf("Failed to marshal config: %v", err)
+	}
+
+	if _, err := tmpFile.Write(configData); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+	tmpFile.Close()
+
+	// Test environment variable override
+	os.Setenv("WOT_BOT_TOKEN", "env-token")
+	os.Setenv("WOT_ADMIN_CHAT_ID", "67890")
+	defer func() {
+		os.Unsetenv("WOT_BOT_TOKEN")
+		os.Unsetenv("WOT_ADMIN_CHAT_ID")
+	}()
+
+	// Load config with environment variables
+	loadedConfig, err := loadConfig(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Verify environment variables override config file values
+	if loadedConfig.Telegram.BotToken != "env-token" {
+		t.Errorf("Expected bot token 'env-token', got '%s'", loadedConfig.Telegram.BotToken)
+	}
+
+	if loadedConfig.Telegram.AdminChatID != 67890 {
+		t.Errorf("Expected admin chat ID 67890, got %d", loadedConfig.Telegram.AdminChatID)
+	}
+}
