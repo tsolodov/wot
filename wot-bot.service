@@ -1,0 +1,35 @@
+[Unit]
+Description=Wake-on-LAN Telegram Bot
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# Remove User/Group to run as current user or use DynamicUser
+DynamicUser=yes
+StateDirectory=wot
+ConfigurationDirectory=wot
+WorkingDirectory=%S/wot
+ExecStart=/usr/bin/wot -config /etc/wot/config.json
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=100
+StartLimitIntervalSec=300
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+MemoryDenyWriteExecute=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=wot-bot
+
+[Install]
+WantedBy=multi-user.target

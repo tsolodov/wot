@@ -1,0 +1,197 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Run tests
+      run: go test -v ./...
+    
+    - name: Run go vet
+      run: go vet ./...
+    
+    - name: Check formatting
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: arm
+            goarm: "6"
+            platform: raspberrypi-zero-w
+          - goos: linux
+            goarch: arm
+            goarm: "7"
+            platform: raspberrypi-2-3-4
+          - goos: linux
+            goarch: arm64
+            goarm: ""
+            platform: raspberrypi-4-64bit
+          - goos: linux
+            goarch: amd64
+            goarm: ""
+            platform: linux-x86_64
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        GOARM: ${{ matrix.goarm }}
+      run: |
+        if [ "${{ matrix.goarm }}" != "" ]; then
+          go build -ldflags="-s -w" -o wot-${{ matrix.platform }}
+        else
+          go build -ldflags="-s -w" -o wot-${{ matrix.platform }}
+        fi
+    
+    - name: Create package directory
+      run: |
+        mkdir -p package/usr/bin
+        mkdir -p package/etc/wot
+        mkdir -p package/etc/systemd/system
+    
+    - name: Copy files to package
+      run: |
+        cp wot-${{ matrix.platform }} package/usr/bin/wot
+        cp config.json package/etc/wot/config.json.example
+        cp wot-bot.service package/etc/systemd/system/
+        chmod +x package/usr/bin/wot
+    
+    - name: Create installation script
+      run: |
+        cat > package/install.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "Installing WoT (Wake-on-LAN Tool)..."
+        
+        # Copy binary
+        sudo cp usr/bin/wot /usr/bin/
+        sudo chmod +x /usr/bin/wot
+        
+        # Create config directory
+        sudo mkdir -p /etc/wot
+        
+        # Copy example config if no config exists
+        if [ ! -f /etc/wot/config.json ]; then
+            sudo cp etc/wot/config.json.example /etc/wot/config.json
+            echo "Created example config at /etc/wot/config.json"
+            echo "Please edit this file with your server details."
+        else
+            echo "Existing config found at /etc/wot/config.json"
+        fi
+        
+        # Install systemd service
+        sudo cp etc/systemd/system/wot-bot.service /etc/systemd/system/
+        sudo systemctl daemon-reload
+        
+        echo "Installation complete!"
+        echo ""
+        echo "Next steps:"
+        echo "1. Edit /etc/wot/config.json with your server configuration"
+        echo "2. Enable and start the service:"
+        echo "   sudo systemctl enable wot-bot"
+        echo "   sudo systemctl start wot-bot"
+        echo "3. Check status with: sudo systemctl status wot-bot"
+        EOF
+        chmod +x package/install.sh
+    
+    - name: Create package tarball
+      run: |
+        cd package
+        tar -czf ../wot-${{ matrix.platform }}.tar.gz .
+        cd ..
+    
+    - name: Generate checksums
+      run: |
+        sha256sum wot-${{ matrix.platform }}.tar.gz > wot-${{ matrix.platform }}.tar.gz.sha256
+        sha512sum wot-${{ matrix.platform }}.tar.gz > wot-${{ matrix.platform }}.tar.gz.sha512
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: wot-${{ matrix.platform }}
+        path: |
+          wot-${{ matrix.platform }}.tar.gz
+          wot-${{ matrix.platform }}.tar.gz.sha256
+          wot-${{ matrix.platform }}.tar.gz.sha512
+        retention-days: 365
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'release'
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          wot-*/wot-*.tar.gz
+          wot-*/wot-*.tar.gz.sha256
+          wot-*/wot-*.tar.gz.sha512
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

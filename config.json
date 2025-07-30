@@ -1,0 +1,18 @@
+{
+  "servers": [
+    {
+      "name": "server1",
+      "mac_address": "aa:bb:cc:dd:ee:ff",
+      "ip_address": "192.168.1.1"
+    },
+    {
+      "name": "server2",
+      "mac_address": "aa:bb:cc:dd:ee:f1", 
+      "ip_address": "192.168.1.2"
+    }
+  ],
+  "telegram": {
+    "bot_token": "1234566:XXXXXXXXXXX",
+    "admin_chat_id": 1111111
+  }
+}
