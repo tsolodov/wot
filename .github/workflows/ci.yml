@@ -7,13 +7,81 @@ on:
     branches: [ main ]
   release:
     types: [ published ]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create release with auto-generated tag'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  MAJOR_VERSION: 0
+  MINOR_VERSION: 1
 
 # Set permissions for GITHUB_TOKEN
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: github.event.inputs.create_release == 'true' && github.ref == 'refs/heads/main'
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.tag_name }}
+      release_created: ${{ steps.create_release.outputs.release_created }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Generate version tag
+      id: create_tag
+      run: |
+        TAG_NAME="${MAJOR_VERSION}.${MINOR_VERSION}.${{ github.run_number }}"
+        echo "tag_name=v${TAG_NAME}" >> $GITHUB_OUTPUT
+        echo "Generated tag: v${TAG_NAME}"
+    
+    - name: Create tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git tag ${{ steps.create_tag.outputs.tag_name }}
+        git push origin ${{ steps.create_tag.outputs.tag_name }}
+    
+    - name: Create release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.create_tag.outputs.tag_name }}
+        name: "WoT Bot ${{ steps.create_tag.outputs.tag_name }}"
+        body: |
+          ## Wake-on-LAN Telegram Bot Release
+          
+          ### Features
+          - Telegram bot interface for Wake-on-LAN control
+          - Server monitoring with status notifications
+          - Cross-platform support (ARM/x86)
+          - SystemD service integration
+          - Environment variable support for secure credentials
+          
+          ### Installation
+          Download the appropriate package for your platform and run the included install script.
+          
+          ### Supported Platforms
+          - Raspberry Pi Zero/W (ARMv6) - Perfect for power outage recovery
+          - Raspberry Pi 2/3/4 (ARMv7)
+          - Raspberry Pi 4 64-bit (ARM64)
+          - Linux x86_64
+          
+          **Note:** Artifacts will be uploaded automatically within a few minutes.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -55,7 +123,8 @@ jobs:
   build:
     name: Build and Package
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, create-release]
+    if: always() && needs.test.result == 'success' && (github.event_name == 'release' || needs.create-release.outputs.release_created == 'true')
     strategy:
       matrix:
         include:
@@ -187,11 +256,11 @@ jobs:
           wot-${{ matrix.platform }}.tar.gz.sha512
         retention-days: 365
 
-  release:
-    name: Create Release
+  upload-assets:
+    name: Upload Release Assets
     runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'release'
+    needs: [build, create-release]
+    if: always() && needs.build.result == 'success' && (github.event_name == 'release' || needs.create-release.outputs.release_created == 'true')
     permissions:
       contents: write
       actions: read
@@ -202,6 +271,7 @@ jobs:
     - name: Upload release assets
       uses: softprops/action-gh-release@v2
       with:
+        tag_name: ${{ needs.create-release.outputs.tag_name || github.ref_name }}
         files: |
           wot-*/wot-*.tar.gz
           wot-*/wot-*.tar.gz.sha256

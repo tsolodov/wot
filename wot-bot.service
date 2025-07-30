@@ -56,16 +56,16 @@ CPUQuota=50%
 
 # Network access (required for Telegram API and Wake-on-LAN)
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-IPAddressDeny=any
-IPAddressAllow=localhost
-IPAddressAllow=link-local
-IPAddressAllow=multicast
-IPAddressAllow=192.168.0.0/16
-IPAddressAllow=10.0.0.0/8
-IPAddressAllow=172.16.0.0/12
+#IPAddressDeny=any
+#IPAddressAllow=localhost
+#IPAddressAllow=link-local
+#IPAddressAllow=multicast
+#IPAddressAllow=192.168.0.0/16
+#IPAddressAllow=10.0.0.0/8
+#IPAddressAllow=172.16.0.0/12
 # Allow Telegram API access
-IPAddressAllow=149.154.160.0/20
-IPAddressAllow=91.108.4.0/22
+#IPAddressAllow=149.154.160.0/20
+#IPAddressAllow=91.108.4.0/22
 
 # Logging
 StandardOutput=journal

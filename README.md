@@ -47,10 +47,11 @@ A Telegram bot for managing Wake-on-LAN magic packets and server monitoring. Con
 
 See the WoT bot in action:
 
-| Feature | Screenshot |
-|---------|------------|
-| Available Commands | ![Bot Commands](docs/images/telegram-bot/telegram-bot-help-command.jpg) |
-| Server Status List | ![Server Status](docs/images/telegram-bot/telegram-bot-server-list.jpg) |
+### Bot Commands Overview
+![Available Commands](docs/images/telegram-bot/telegram-bot-help-command.jpg)
+
+### Server Status Monitoring
+![Server Status List](docs/images/telegram-bot/telegram-bot-server-list.jpg)
 
 ## ⚠️ Disclaimer
 
@@ -80,8 +81,9 @@ curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-raspberr
 curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-raspberrypi-zero-w.tar.gz.sha256
 sha256sum -c wot-raspberrypi-zero-w.tar.gz.sha256
 
+mkdir package
 # Extract and install
-tar -xzf wot-raspberrypi-zero-w.tar.gz
+tar -xzf wot-raspberrypi-zero-w.tar.gz -C package
 cd package
 sudo ./install.sh
 ```
@@ -98,6 +100,8 @@ curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-raspberr
 curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-raspberrypi-2-3-4.tar.gz.sha256
 sha256sum -c wot-raspberrypi-2-3-4.tar.gz.sha256
 
+mkdir package
+
 # Extract and install
 tar -xzf wot-raspberrypi-2-3-4.tar.gz
 cd package
@@ -111,6 +115,8 @@ curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-raspberr
 curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-raspberrypi-4-64bit.tar.gz.sha256
 sha256sum -c wot-raspberrypi-4-64bit.tar.gz.sha256
 
+mkdir package
+
 # Extract and install
 tar -xzf wot-raspberrypi-4-64bit.tar.gz
 cd package
@@ -123,6 +129,8 @@ sudo ./install.sh
 curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-linux-x86_64.tar.gz
 curl -L -O https://github.com/tsolodov/wot/releases/latest/download/wot-linux-x86_64.tar.gz.sha256
 sha256sum -c wot-linux-x86_64.tar.gz.sha256
+
+mkdir package
 
 # Extract and install
 tar -xzf wot-linux-x86_64.tar.gz
@@ -221,7 +229,9 @@ All server management is done through Telegram bot commands once the service is 
 The following commands are available in your Telegram chat with the bot:
 
 ### Help Command
-Use `/help` to see all available commands (see screenshot in [Screenshots](#screenshots) section above).
+Use `/help` to see all available commands:
+
+![Bot Help Command](docs/images/telegram-bot/telegram-bot-help-command.jpg)
 
 ### Available Commands
 - `/help` - Show bot commands
@@ -236,7 +246,9 @@ Use `/help` to see all available commands (see screenshot in [Screenshots](#scre
   - `/checkwake servername` - Check and wake specific server
 
 ### Server List Example
-The `/list` command shows all configured servers with their current status (see screenshot in [Screenshots](#screenshots) section above).
+The `/list` command shows all configured servers with their current status:
+
+![Server List Command](docs/images/telegram-bot/telegram-bot-server-list.jpg)
 
 ## Setting up Telegram Bot
 
@@ -318,7 +330,9 @@ You need your Telegram chat ID so the bot knows where to send messages.
 
 4. **Verify** you receive a response with the available commands
 
-If successful, you should see the help response with available commands (refer to the screenshot in the [Screenshots](#screenshots) section).
+If successful, you should see the help response like this:
+
+![Successful Bot Setup](docs/images/telegram-bot/telegram-bot-help-command.jpg)
 
 ### Security Best Practices
 
@@ -362,7 +376,11 @@ If successful, you should see the help response with available commands (refer t
 
 ## Server Monitoring
 
-The bot automatically monitors server status and sends notifications. The server list shows status indicators: ✅ UP, ❌ DOWN, ❓ NO IP (see server status screenshot in the [Screenshots](#screenshots) section).
+The bot automatically monitors server status and sends notifications:
+
+![Server Status Example](docs/images/telegram-bot/telegram-bot-server-list.jpg)
+
+*Example server list showing status indicators: ✅ UP, ❌ DOWN, ❓ NO IP*
 
 ### Features
 - **Automatic monitoring**: Checks server status at regular intervals (configurable via `monitoring_interval`)
