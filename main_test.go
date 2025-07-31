@@ -4,16 +4,18 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestLoadConfig(t *testing.T) {
-	// Create a temporary config file
 	testConfig := Config{
 		Servers: []Server{
 			{
 				Name:       "test-server",
 				MACAddress: "aa:bb:cc:dd:ee:ff",
 				IPAddress:  "192.168.1.100",
+				TCPPorts:   []int{22, 80, 443},
 			},
 		},
 		BroadcastIP: "255.255.255.255",
@@ -23,40 +25,80 @@ func TestLoadConfig(t *testing.T) {
 		},
 	}
 
-	// Write test config to temporary file
-	tmpFile, err := os.CreateTemp("", "test-config-*.json")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer os.Remove(tmpFile.Name())
+	// Test YAML format
+	t.Run("YAML", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "test-config-*.yaml")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
 
-	configData, err := json.Marshal(testConfig)
-	if err != nil {
-		t.Fatalf("Failed to marshal config: %v", err)
+		configData, err := yaml.Marshal(testConfig)
+		if err != nil {
+			t.Fatalf("Failed to marshal YAML config: %v", err)
+		}
+
+		if _, err := tmpFile.Write(configData); err != nil {
+			t.Fatalf("Failed to write config: %v", err)
+		}
+		tmpFile.Close()
+
+		loadedConfig, err := loadConfig(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("Failed to load YAML config: %v", err)
+		}
+
+		verifyConfig(t, loadedConfig)
+	})
+
+	// Test JSON format
+	t.Run("JSON", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "test-config-*.json")
+		if err != nil {
+			t.Fatalf("Failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		configData, err := json.Marshal(testConfig)
+		if err != nil {
+			t.Fatalf("Failed to marshal JSON config: %v", err)
+		}
+
+		if _, err := tmpFile.Write(configData); err != nil {
+			t.Fatalf("Failed to write config: %v", err)
+		}
+		tmpFile.Close()
+
+		loadedConfig, err := loadConfig(tmpFile.Name())
+		if err != nil {
+			t.Fatalf("Failed to load JSON config: %v", err)
+		}
+
+		verifyConfig(t, loadedConfig)
+	})
+}
+
+func verifyConfig(t *testing.T, config *Config) {
+	if len(config.Servers) != 1 {
+		t.Errorf("Expected 1 server, got %d", len(config.Servers))
 	}
 
-	if _, err := tmpFile.Write(configData); err != nil {
-		t.Fatalf("Failed to write config: %v", err)
-	}
-	tmpFile.Close()
-
-	// Test loading the config
-	loadedConfig, err := loadConfig(tmpFile.Name())
-	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
+	if config.Servers[0].Name != "test-server" {
+		t.Errorf("Expected server name 'test-server', got '%s'", config.Servers[0].Name)
 	}
 
-	// Verify loaded config
-	if len(loadedConfig.Servers) != 1 {
-		t.Errorf("Expected 1 server, got %d", len(loadedConfig.Servers))
+	if config.BroadcastIP != "255.255.255.255" {
+		t.Errorf("Expected broadcast IP '255.255.255.255', got '%s'", config.BroadcastIP)
 	}
 
-	if loadedConfig.Servers[0].Name != "test-server" {
-		t.Errorf("Expected server name 'test-server', got '%s'", loadedConfig.Servers[0].Name)
+	expectedPorts := []int{22, 80, 443}
+	if len(config.Servers[0].TCPPorts) != len(expectedPorts) {
+		t.Errorf("Expected %d TCP ports, got %d", len(expectedPorts), len(config.Servers[0].TCPPorts))
 	}
-
-	if loadedConfig.BroadcastIP != "255.255.255.255" {
-		t.Errorf("Expected broadcast IP '255.255.255.255', got '%s'", loadedConfig.BroadcastIP)
+	for i, port := range expectedPorts {
+		if i < len(config.Servers[0].TCPPorts) && config.Servers[0].TCPPorts[i] != port {
+			t.Errorf("Expected TCP port %d at index %d, got %d", port, i, config.Servers[0].TCPPorts[i])
+		}
 	}
 }
 
@@ -89,6 +131,7 @@ func TestEnvironmentVariables(t *testing.T) {
 				Name:       "test-server",
 				MACAddress: "aa:bb:cc:dd:ee:ff",
 				IPAddress:  "192.168.1.100",
+				TCPPorts:   []int{22, 80, 443},
 			},
 		},
 		Telegram: TelegramConfig{

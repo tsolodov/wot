@@ -91,7 +91,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.23'
     
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -151,7 +151,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.23'
     
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -187,7 +187,7 @@ jobs:
     - name: Copy files to package
       run: |
         cp wot-${{ matrix.platform }} package/usr/bin/wot
-        cp config.json package/etc/wot/config.json.example
+        cp config.yaml package/etc/wot/config.yaml.example
         cp environment.example package/etc/wot/environment.example
         cp wot-bot.service package/etc/systemd/system/
         chmod +x package/usr/bin/wot
@@ -208,12 +208,12 @@ jobs:
         sudo mkdir -p /etc/wot
         
         # Copy example config if no config exists
-        if [ ! -f /etc/wot/config.json ]; then
-            sudo cp etc/wot/config.json.example /etc/wot/config.json
-            echo "Created example config at /etc/wot/config.json"
+        if [ ! -f /etc/wot/config.yaml ]; then
+            sudo cp etc/wot/config.yaml.example /etc/wot/config.yaml
+            echo "Created example config at /etc/wot/config.yaml"
             echo "Please edit this file with your server details."
         else
-            echo "Existing config found at /etc/wot/config.json"
+            echo "Existing config found at /etc/wot/config.yaml"
         fi
         
         # Copy environment example file
@@ -227,7 +227,7 @@ jobs:
         echo "Installation complete!"
         echo ""
         echo "Next steps:"
-        echo "1. Edit /etc/wot/config.json with your server configuration"
+        echo "1. Edit /etc/wot/config.yaml with your server configuration"
         echo "2. Enable and start the service:"
         echo "   sudo systemctl enable wot-bot"
         echo "   sudo systemctl start wot-bot"

@@ -11,7 +11,7 @@ DynamicUser=yes
 StateDirectory=wot
 ConfigurationDirectory=wot
 WorkingDirectory=%S/wot
-ExecStart=/usr/bin/wot -config /etc/wot/config.json
+ExecStart=/usr/bin/wot -config /etc/wot/config.yaml
 
 # Environment variables (optional - can be overridden with drop-in files)
 # Create /etc/systemd/system/wot-bot.service.d/environment.conf to override

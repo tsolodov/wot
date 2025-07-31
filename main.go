@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -21,26 +22,26 @@ var (
 )
 
 type Server struct {
-	Name       string `json:"name"`
-	MACAddress string `json:"mac_address"`
-	IPAddress  string `json:"ip_address,omitempty"`
-	Port       int    `json:"port,omitempty"`
+	Name       string `json:"name" yaml:"name"`
+	MACAddress string `json:"mac_address" yaml:"mac_address"`
+	IPAddress  string `json:"ip_address,omitempty" yaml:"ip_address,omitempty"`
+	TCPPorts   []int  `json:"tcp_ports,omitempty" yaml:"tcp_ports,omitempty"`
 }
 
 type TelegramConfig struct {
-	BotToken    string `json:"bot_token"`
-	AdminChatID int64  `json:"admin_chat_id"`
+	BotToken    string `json:"bot_token" yaml:"bot_token"`
+	AdminChatID int64  `json:"admin_chat_id" yaml:"admin_chat_id"`
 }
 
 type Config struct {
-	Servers            []Server       `json:"servers"`
-	Telegram           TelegramConfig `json:"telegram,omitempty"`
-	BroadcastIP        string         `json:"broadcast_ip,omitempty"`
-	MonitoringInterval int            `json:"monitoring_interval,omitempty"`
+	Servers            []Server       `json:"servers" yaml:"servers"`
+	Telegram           TelegramConfig `json:"telegram,omitempty" yaml:"telegram,omitempty"`
+	BroadcastIP        string         `json:"broadcast_ip,omitempty" yaml:"broadcast_ip,omitempty"`
+	MonitoringInterval int            `json:"monitoring_interval,omitempty" yaml:"monitoring_interval,omitempty"`
 }
 
 func main() {
-	var configFile = flag.String("config", "config.json", "Configuration file path")
+	var configFile = flag.String("config", "config.yaml", "Configuration file path")
 
 	flag.Parse()
 
@@ -59,9 +60,14 @@ func loadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	err = json.Unmarshal(data, &config)
+	// Try YAML first, then JSON as fallback
+	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		// Try JSON as fallback
+		err = json.Unmarshal(data, &config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse config file as YAML or JSON: %w", err)
+		}
 	}
 
 	// Override with environment variables if present
@@ -167,16 +173,16 @@ func checkServerStatus(server Server) bool {
 		return false
 	}
 
-	return pingHost(server.IPAddress)
+	return pingHost(server.IPAddress, server.TCPPorts)
 }
 
-func pingHost(host string) bool {
+func pingHost(host string, tcpPorts []int) bool {
 	// Try privileged ping first
 	if pingHostPrivileged(host) {
 		return true
 	}
 	// Fallback to unprivileged ping
-	return pingHostUnprivileged(host)
+	return pingHostUnprivileged(host, tcpPorts)
 }
 
 func pingHostPrivileged(host string) bool {
@@ -230,12 +236,17 @@ func pingHostPrivileged(host string) bool {
 	return false
 }
 
-func pingHostUnprivileged(host string) bool {
-	// Try common TCP ports as connectivity check
-	ports := []string{"22", "80", "443", "53"}
+func pingHostUnprivileged(host string, tcpPorts []int) bool {
+	// Use custom TCP ports or default to common ports
+	var ports []int
+	if len(tcpPorts) > 0 {
+		ports = tcpPorts
+	} else {
+		ports = []int{22, 80, 443}
+	}
 
 	for _, port := range ports {
-		conn, err := net.DialTimeout("tcp", host+":"+port, 1*time.Second)
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), 1*time.Second)
 		if err == nil {
 			conn.Close()
 			return true
@@ -288,7 +299,7 @@ func checkAndWakeServer(server Server) error {
 	}
 
 	fmt.Printf("Checking %s (%s)... ", server.Name, server.IPAddress)
-	if pingHost(server.IPAddress) {
+	if pingHost(server.IPAddress, server.TCPPorts) {
 		fmt.Println("UP - no wake needed")
 		return nil
 	}

@@ -1,0 +1,16 @@
+servers:
+  - name: server1
+    mac_address: "00:11:22:33:44:55"
+    ip_address: "192.168.1.100"
+    tcp_ports: [22, 80, 443]
+  - name: server2
+    mac_address: "aa-bb-cc-dd-ee-ff"
+    ip_address: "192.168.1.101"
+    tcp_ports: [22, 3389]  # Custom ports for Windows server
+
+broadcast_ip: "255.255.255.255"
+monitoring_interval: 5
+
+telegram:
+  bot_token: "YOUR_BOT_TOKEN_HERE"
+  admin_chat_id: 123456789

@@ -148,30 +148,28 @@ go build -o wot
 
 ## Configuration
 
-Create a `config.json` file with your server configurations:
+Create a `config.yaml` file with your server configurations:
 
-```json
-{
-  "servers": [
-    {
-      "name": "server1",
-      "mac_address": "00:11:22:33:44:55",
-      "ip_address": "192.168.1.100"
-    },
-    {
-      "name": "server2", 
-      "mac_address": "aa-bb-cc-dd-ee-ff",
-      "ip_address": "192.168.1.101"
-    }
-  ],
-  "broadcast_ip": "255.255.255.255",
-  "monitoring_interval": 5,
-  "telegram": {
-    "bot_token": "YOUR_BOT_TOKEN_HERE",
-    "admin_chat_id": 123456789
-  }
-}
+```yaml
+servers:
+  - name: server1
+    mac_address: "00:11:22:33:44:55"
+    ip_address: "192.168.1.100"
+    tcp_ports: [22, 80, 443]
+  - name: server2
+    mac_address: "aa-bb-cc-dd-ee-ff"
+    ip_address: "192.168.1.101"
+    tcp_ports: [22, 3389]  # Custom ports for Windows server
+
+broadcast_ip: "255.255.255.255"
+monitoring_interval: 5
+
+telegram:
+  bot_token: "YOUR_BOT_TOKEN_HERE"
+  admin_chat_id: 123456789
 ```
+
+**Note:** Both YAML (`.yaml`, `.yml`) and JSON (`.json`) formats are supported. YAML is now the default format.
 
 ### Configuration Fields
 
@@ -179,6 +177,7 @@ Create a `config.json` file with your server configurations:
 - `name`: Friendly name for the server
 - `mac_address`: MAC address (supports `:` or `-` separators)
 - `ip_address`: (Optional) IP address for status checking via ICMP ping
+- `tcp_ports`: (Optional) List of TCP ports to probe for connectivity check (defaults to [22, 80, 443] if not specified)
 
 **Global Configuration:**
 - `broadcast_ip`: (Optional) Broadcast IP address for Wake-on-LAN packets (defaults to 255.255.255.255)
@@ -211,16 +210,16 @@ Environment variables take precedence over config file values, making them ideal
 The WoT bot runs as a Telegram bot service. Start it with:
 
 ```bash
-# Run with default config file (config.json)
+# Run with default config file (config.yaml)
 ./wot
 
 # Run with custom config file
-./wot -config /path/to/config.json
+./wot -config /path/to/config.yaml
 ```
 
 ## Command Line Options
 
-- `-config`: Path to configuration file (default: `config.json`)
+- `-config`: Path to configuration file (default: `config.yaml`)
 
 All server management is done through Telegram bot commands once the service is running.
 
@@ -296,20 +295,17 @@ You need your Telegram chat ID so the bot knows where to send messages.
 
 1. **Edit your config file**:
    ```bash
-   nano config.json
+   nano config.yaml
    ```
 
 2. **Update the telegram section**:
-   ```json
-   {
-     "servers": [
-       // ... your servers here
-     ],
-     "telegram": {
-       "bot_token": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
-       "admin_chat_id": 123456789
-     }
-   }
+   ```yaml
+   servers:
+     # ... your servers here
+   
+   telegram:
+     bot_token: "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+     admin_chat_id: 123456789
    ```
 
 3. **Save and exit** the editor (Ctrl+X, then Y, then Enter in nano)
@@ -372,7 +368,7 @@ If successful, you should see the help response like this:
 **Required Information:**
 - Bot Token: Get from @BotFather when creating your bot
 - Chat ID: Get from @userinfobot or @getidsbot
-- Both go in the `telegram` section of your `config.json`
+- Both go in the `telegram` section of your `config.yaml`
 
 ## Server Monitoring
 
@@ -389,7 +385,7 @@ The bot automatically monitors server status and sends notifications:
 - **Startup notification**: Get notified when the bot starts with system uptime
 
 ### Monitoring Details
-- Default interval: 5 minutes (configurable via `monitoring_interval` in `config.json`)
+- Default interval: 5 minutes (configurable via `monitoring_interval` in `config.yaml`)
 - Uses ICMP ping for status checking with TCP fallback for unprivileged operation
 - Notifications include server name, status change, IP address, and timestamp
 - Only sends notifications when server status actually changes (not on every check)
@@ -420,8 +416,8 @@ sudo chmod +x /usr/bin/wot
 
 # Copy config to system config directory
 sudo mkdir -p /etc/wot
-sudo cp config.json /etc/wot/
-sudo chmod 644 /etc/wot/config.json
+sudo cp config.yaml /etc/wot/
+sudo chmod 644 /etc/wot/config.yaml
 ```
 
 ### 3. Install systemd service
@@ -457,7 +453,7 @@ After installing via the pre-built packages:
 ### 1. Configure Your Servers
 Edit the configuration file with your server details:
 ```bash
-sudo nano /etc/wot/config.json
+sudo nano /etc/wot/config.yaml
 ```
 
 ### 2. Enable and Start the Service
@@ -472,7 +468,7 @@ sudo systemctl start wot-bot
 sudo systemctl status wot-bot
 
 # Test bot with custom config
-wot -config /etc/wot/config.json
+wot -config /etc/wot/config.yaml
 
 # View service logs
 sudo journalctl -u wot-bot -f
@@ -517,7 +513,7 @@ sudo systemctl restart wot-bot
 ```
 
 ### Troubleshooting
-- Config location: `/etc/wot/config.json`
+- Config location: `/etc/wot/config.yaml`
 - State directory: `/var/lib/wot/` (created automatically)
 - Service runs as dynamic user (no need to create user account)
 
@@ -525,7 +521,9 @@ sudo systemctl restart wot-bot
 
 The program checks server status using a hybrid approach:
 - **Primary method**: ICMP ping packets for privileged operation
-- **Fallback method**: TCP connection attempts to common ports (22, 80, 443, 53) for unprivileged operation
+- **Fallback method**: TCP connection attempts to configured ports for unprivileged operation
+- **Configurable ports**: Use `tcp_ports` array in server config (defaults to [22, 80, 443] if not specified)
+- **Port examples**: SSH (22), HTTP (80), HTTPS (443), RDP (3389), custom services
 - Cross-platform compatible (Linux, macOS, Windows)
 - Servers without IP addresses cannot be status checked and will show as "NO IP"
 
