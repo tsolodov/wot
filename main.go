@@ -126,8 +126,10 @@ func wakeAllServers(servers []Server) error {
 func SendMagicPacket(macAddr, broadcastIP string) error {
 
 	log.Printf("SendMagicPacket to %s broadcast: %s\n", macAddr, broadcastIP)
-	// Parse MAC address
-	macBytes, err := hex.DecodeString(strings.ReplaceAll(macAddr, ":", ""))
+	// Parse MAC address (support both : and - separators)
+	macStr := strings.ReplaceAll(macAddr, ":", "")
+	macStr = strings.ReplaceAll(macStr, "-", "")
+	macBytes, err := hex.DecodeString(macStr)
 	if err != nil {
 		return fmt.Errorf("invalid MAC address: %w", err)
 	}
@@ -146,25 +148,45 @@ func SendMagicPacket(macAddr, broadcastIP string) error {
 		copy(magicPacket[6+(i*6):6+(i*6)+6], macBytes)
 	}
 
-	// Resolve UDP address
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", broadcastIP, 9)) // Port 9 is commonly used for WoL
+	// An empty broadcast IP makes Go dial the local host (loopback),
+	// so the packet never leaves the machine. Default to limited broadcast.
+	if broadcastIP == "" {
+		broadcastIP = "255.255.255.255"
+	}
+
+	// Send to both common WoL ports (9 = discard, 7 = echo); NICs only
+	// look at the payload, but some routers/firewalls only pass one of them.
+	var lastErr error
+	sent := 0
+	for _, port := range []int{9, 7} {
+		if err := sendUDP(magicPacket, broadcastIP, port); err != nil {
+			log.Printf("SendMagicPacket: port %d: %v", port, err)
+			lastErr = err
+			continue
+		}
+		sent++
+	}
+	if sent == 0 {
+		return lastErr
+	}
+	return nil
+}
+
+func sendUDP(payload []byte, ip string, port int) error {
+	addr, err := net.ResolveUDPAddr("udp4", net.JoinHostPort(ip, strconv.Itoa(port)))
 	if err != nil {
 		return fmt.Errorf("failed to resolve UDP address: %w", err)
 	}
 
-	// Establish UDP connection
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.DialUDP("udp4", nil, addr)
 	if err != nil {
 		return fmt.Errorf("failed to dial UDP: %w", err)
 	}
 	defer conn.Close()
 
-	// Send magic packet
-	_, err = conn.Write(magicPacket)
-	if err != nil {
+	if _, err := conn.Write(payload); err != nil {
 		return fmt.Errorf("failed to send magic packet: %w", err)
 	}
-
 	return nil
 }
 
